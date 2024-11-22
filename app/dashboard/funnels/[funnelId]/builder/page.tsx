@@ -14,6 +14,26 @@ import { StylesPanel } from "@/components/builder/styles-panel";
 import { SettingsPanel } from "@/components/builder/settings-panel";
 import { PreviewModal } from "@/components/builder/preview-modal";
 
+interface Element {
+  id: string;
+  type: string;
+  content: Record<string, any>;
+  styles: Record<string, any>;
+}
+
+interface Page {
+  id: string;
+  name: string;
+  content: {
+    elements: Element[];
+  };
+}
+
+interface FunnelData {
+  name: string;
+  pages: Page[];
+}
+
 const AVAILABLE_ELEMENTS = [
   { type: "header", label: "Header" },
   { type: "text", label: "Text Block" },
@@ -31,12 +51,12 @@ export default function FunnelBuilder() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [activeElement, setActiveElement] = useState(null);
-  const [funnelData, setFunnelData] = useState({
+  const [activeElement, setActiveElement] = useState<Element | null>(null);
+  const [funnelData, setFunnelData] = useState<FunnelData>({
     name: "",
     pages: []
   });
-  const [activePage, setActivePage] = useState(null);
+  const [activePage, setActivePage] = useState<string | null>(null);
 
   useEffect(() => {
     loadFunnelData();
@@ -45,7 +65,7 @@ export default function FunnelBuilder() {
   const loadFunnelData = async () => {
     try {
       // Load funnel data
-      const funnelResponse = await fetch(`/api/funnels/${params.funnelId}`);
+      const funnelResponse = await fetch(`/api/funnels/${params.funnelId}/pages`);
       if (!funnelResponse.ok) throw new Error("Failed to load funnel");
       const funnelData = await funnelResponse.json();
 
@@ -69,7 +89,7 @@ export default function FunnelBuilder() {
     }
   };
 
-  const handleDragEnd = async (result) => {
+  const handleDragEnd = async (result: any) => {
     if (!result.destination || !activePage) return;
 
     const { source, destination } = result;
@@ -78,40 +98,40 @@ export default function FunnelBuilder() {
 
     const newElements = Array.from(currentPage.content.elements || []);
 
-    if (source.droppableId === "elements-panel") {
-      // Adding new element from panel
-      const elementType = AVAILABLE_ELEMENTS[source.index].type;
-      const newElement = {
-        id: `element-${Date.now()}`,
-        type: elementType,
-        content: {},
-        styles: {}
-      };
-      newElements.splice(destination.index, 0, newElement);
-    } else {
-      // Reordering existing elements
-      const [removed] = newElements.splice(source.index, 1);
-      newElements.splice(destination.index, 0, removed);
-    }
-
-    // Update local state
-    setFunnelData(prev => ({
-      ...prev,
-      pages: prev.pages.map(p => 
-        p.id === activePage
-          ? { 
-              ...p, 
-              content: { 
-                ...p.content,
-                elements: newElements 
-              }
-            }
-          : p
-      )
-    }));
-
-    // Save to server
     try {
+      if (source.droppableId === "elements-panel") {
+        // Adding new element from panel
+        const elementType = AVAILABLE_ELEMENTS[source.index].type;
+        const newElement: Element = {
+          id: `element-${Date.now()}`,
+          type: elementType,
+          content: {},
+          styles: {}
+        };
+        newElements.splice(destination.index, 0, newElement);
+      } else {
+        // Reordering existing elements
+        const [removed] = newElements.splice(source.index, 1);
+        newElements.splice(destination.index, 0, removed);
+      }
+
+      // Update local state
+      setFunnelData(prev => ({
+        ...prev,
+        pages: prev.pages.map(p => 
+          p.id === activePage
+            ? { 
+                ...p, 
+                content: { 
+                  ...p.content,
+                  elements: newElements 
+                }
+              }
+            : p
+        )
+      }));
+
+      // Save to server
       const response = await fetch(`/api/funnels/${params.funnelId}/pages/${activePage}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -120,10 +140,15 @@ export default function FunnelBuilder() {
         }),
       });
 
-      if (!response.ok) throw new Error("Failed to save changes");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to save changes");
+      }
     } catch (error) {
       console.error("Error saving changes:", error);
-      toast.error("Failed to save changes");
+      toast.error(error instanceof Error ? error.message : "Failed to save changes");
+      // Rollback changes if save failed
+      loadFunnelData();
     }
   };
 
@@ -131,7 +156,9 @@ export default function FunnelBuilder() {
     try {
       setIsSaving(true);
       const currentPage = funnelData.pages.find(p => p.id === activePage);
-      if (!currentPage) return;
+      if (!currentPage) {
+        throw new Error("No active page selected");
+      }
 
       const response = await fetch(`/api/funnels/${params.funnelId}/pages/${activePage}`, {
         method: "PATCH",
@@ -141,11 +168,15 @@ export default function FunnelBuilder() {
         }),
       });
 
-      if (!response.ok) throw new Error("Failed to save changes");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to save changes");
+      }
+      
       toast.success("Changes saved successfully");
     } catch (error) {
       console.error("Error saving:", error);
-      toast.error("Failed to save changes");
+      toast.error(error instanceof Error ? error.message : "Failed to save changes");
     } finally {
       setIsSaving(false);
     }
@@ -287,8 +318,8 @@ export default function FunnelBuilder() {
                   {(provided) => (
                     <div
                       {...provided.droppableProps}
-                      ref={provided.innerRef}
                       className="min-h-full"
+                      ref={provided.innerRef}
                     >
                       {currentPage.content.elements?.map((element, index) => (
                         <Draggable
@@ -298,11 +329,11 @@ export default function FunnelBuilder() {
                         >
                           {(provided) => (
                             <div
+                              className="mb-4"
+                              onClick={() => setActiveElement(element)}
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               {...provided.dragHandleProps}
-                              className="mb-4"
-                              onClick={() => setActiveElement(element)}
                             >
                               <Card className="p-4">
                                 {element.type}
@@ -327,7 +358,33 @@ export default function FunnelBuilder() {
                   </TabsList>
                   <div className="p-4">
                     <TabsContent value="elements">
-                      <ElementsPanel elements={AVAILABLE_ELEMENTS} />
+                      <ElementsPanel 
+                        elements={AVAILABLE_ELEMENTS} 
+                        onAddElement={(type) => {
+                          // Add logic to add a new element of the specified type
+                          const newElement: Element = {
+                            id: crypto.randomUUID(),
+                            type,
+                            content: {},
+                            styles: {}
+                          };
+                          const updatedElements = [...currentPage.content.elements, newElement];
+                          setFunnelData(prev => ({
+                            ...prev,
+                            pages: prev.pages.map(p => 
+                              p.id === activePage
+                                ? {
+                                    ...p,
+                                    content: {
+                                      ...p.content,
+                                      elements: updatedElements
+                                    }
+                                  }
+                                : p
+                            )
+                          }));
+                        }} 
+                      />
                     </TabsContent>
                     <TabsContent value="styles">
                       <StylesPanel
@@ -359,27 +416,53 @@ export default function FunnelBuilder() {
                     <TabsContent value="settings">
                       <SettingsPanel
                         element={activeElement}
-                        onUpdate={(content) => {
-                          if (!activeElement) return;
-                          const updatedElements = currentPage.content.elements.map(e =>
-                            e.id === activeElement.id
-                              ? { ...e, content }
-                              : e
-                          );
-                          setFunnelData(prev => ({
-                            ...prev,
-                            pages: prev.pages.map(p => 
-                              p.id === activePage
-                                ? {
-                                    ...p,
-                                    content: {
-                                      ...p.content,
-                                      elements: updatedElements
+                        onUpdate={async (content) => {
+                          if (!activeElement || !currentPage) return;
+                          
+                          try {
+                            const updatedElements = currentPage.content.elements.map(e =>
+                              e.id === activeElement.id
+                                ? { ...e, content }
+                                : e
+                            );
+
+                            // Update local state
+                            setFunnelData(prev => ({
+                              ...prev,
+                              pages: prev.pages.map(p => 
+                                p.id === activePage
+                                  ? {
+                                      ...p,
+                                      content: {
+                                        ...p.content,
+                                        elements: updatedElements
+                                      }
                                     }
-                                  }
-                                : p
-                            )
-                          }));
+                                  : p
+                              )
+                            }));
+
+                            // Save to server
+                            const response = await fetch(`/api/funnels/${params.funnelId}/pages/${activePage}`, {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                content: {
+                                  elements: updatedElements
+                                }
+                              }),
+                            });
+
+                            if (!response.ok) {
+                              const error = await response.json();
+                              throw new Error(error.message || "Failed to save changes");
+                            }
+                          } catch (error) {
+                            console.error("Error saving element settings:", error);
+                            toast.error(error instanceof Error ? error.message : "Failed to save changes");
+                            // Rollback changes if save failed
+                            loadFunnelData();
+                          }
                         }}
                       />
                     </TabsContent>

@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth';
+import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import { DashboardHeader } from '@/components/dashboard/header';
 import { DashboardShell } from '@/components/dashboard/shell';
@@ -9,7 +9,7 @@ import { prisma } from '@/lib/prisma';
 export default async function DashboardPage() {
   const session = await auth();
   
-  if (!session?.user) {
+  if (!session?.user?.id) {
     redirect('/login');
   }
 
@@ -29,12 +29,12 @@ export default async function DashboardPage() {
     <DashboardShell>
       <DashboardHeader
         heading="Funnels"
-        text="Create and manage your marketing funnels."
+        text="Create and manage your sales funnels."
       />
-      {funnels.length > 0 ? (
-        <FunnelList funnels={funnels} />
-      ) : (
+      {funnels.length === 0 ? (
         <EmptyState />
+      ) : (
+        <FunnelList funnels={funnels} />
       )}
     </DashboardShell>
   );

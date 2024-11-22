@@ -7,7 +7,18 @@ import {
 
 interface PreviewModalProps {
   funnel: any;
-  page: any;
+  page: {
+    id: string;
+    name: string;
+    content: {
+      elements: Array<{
+        id: string;
+        type: string;
+        content: Record<string, any>;
+        styles: Record<string, any>;
+      }>;
+    };
+  };
   onClose: () => void;
 }
 
@@ -48,10 +59,17 @@ export function PreviewModal({ funnel, page, onClose }: PreviewModalProps) {
         );
 
       case "image":
+        if (!element.content?.src) {
+          return (
+            <div style={style} className="flex items-center justify-center p-4 border-2 border-dashed">
+              <p className="text-muted-foreground">No image selected</p>
+            </div>
+          );
+        }
         return (
           <img
-            src={element.content?.src}
-            alt={element.content?.alt}
+            src={element.content.src}
+            alt={element.content?.alt || "Image"}
             style={style}
           />
         );
@@ -161,11 +179,11 @@ export function PreviewModal({ funnel, page, onClose }: PreviewModalProps) {
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            Preview: {page?.name} - {funnel.name}
+            Preview: {page?.name} - {funnel?.name}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 p-4">
-          {page?.elements.map((element: any) => (
+          {page?.content?.elements?.map((element: any) => (
             <div key={element.id}>{renderElement(element)}</div>
           ))}
         </div>

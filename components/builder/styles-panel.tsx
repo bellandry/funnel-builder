@@ -77,16 +77,16 @@ export function StylesPanel({ element, onUpdate }: StylesPanelProps) {
       <div className="space-y-2">
         <Label>Text Color</Label>
         <ColorPicker
-          value={element.styles.color || "#000000"}
-          onChange={(value) => updateStyle("color", value)}
+          color={element.styles.color || "#000000"}
+          onChange={(color) => updateStyle("color", color)}
         />
       </div>
 
       <div className="space-y-2">
         <Label>Background Color</Label>
         <ColorPicker
-          value={element.styles.backgroundColor || "transparent"}
-          onChange={(value) => updateStyle("backgroundColor", value)}
+          color={element.styles.backgroundColor || "transparent"}
+          onChange={(color) => updateStyle("backgroundColor", color)}
         />
       </div>
 
@@ -164,8 +164,8 @@ export function StylesPanel({ element, onUpdate }: StylesPanelProps) {
       <div className="space-y-2">
         <Label>Border Color</Label>
         <ColorPicker
-          value={element.styles.borderColor || "#000000"}
-          onChange={(value) => updateStyle("borderColor", value)}
+          color={element.styles.borderColor || "#000000"}
+          onChange={(color) => updateStyle("borderColor", color)}
         />
       </div>
 

@@ -32,7 +32,7 @@ export function FunnelList({ funnels }: FunnelListProps) {
           <CardContent>
             <div className="flex justify-between">
               <Button variant="outline" size="sm" asChild>
-                <Link href={`/dashboard/funnels/${funnel.id}`}>
+                <Link href={`/dashboard/funnels/${funnel.id}/builder`}>
                   <Edit2 className="mr-2 h-4 w-4" />
                   Edit
                 </Link>

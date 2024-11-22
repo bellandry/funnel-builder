@@ -13,7 +13,7 @@ export function EmptyState() {
           You haven't created any funnels yet. Start building your first funnel.
         </p>
         <Button asChild>
-          <Link href="/dashboard/funnels/new">
+          <Link href="/dashboard/funnels/create">
             <Plus className="mr-2 h-4 w-4" />
             New Funnel
           </Link>

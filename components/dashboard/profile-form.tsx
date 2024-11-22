@@ -98,6 +98,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
                   placeholder="Enter your email"
                   type="email"
                   {...field}
+                  disabled
                 />
               </FormControl>
               <FormDescription>

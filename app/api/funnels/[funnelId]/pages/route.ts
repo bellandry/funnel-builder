@@ -17,17 +17,19 @@ const pageSchema = z.object({
 
 export async function POST(
   req: Request,
-  { params }: { params: { funnelId: string } }
+  context: { params: { funnelId: string } }
 ) {
   try {
     const session = await auth();
+    const { funnelId } = await context.params;
+
     if (!session?.user) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
     const funnel = await prisma.funnel.findUnique({
       where: {
-        id: params.funnelId,
+        id: funnelId,
         userId: session.user.id,
       },
     });
@@ -47,23 +49,21 @@ export async function POST(
 
     // Get the highest order number
     const lastPage = await prisma.page.findFirst({
-      where: { funnelId: params.funnelId },
+      where: { funnelId },
       orderBy: { order: "desc" },
     });
 
-    const newOrder = (lastPage?.order ?? -1) + 1;
-
-    const page = await prisma.page.create({
+    const newPage = await prisma.page.create({
       data: {
         name: body.name,
         slug,
         content: body.content,
-        order: newOrder,
-        funnelId: params.funnelId,
+        order: lastPage ? lastPage.order + 1 : 0,
+        funnelId,
       },
     });
 
-    return NextResponse.json(page);
+    return NextResponse.json(newPage);
   } catch (error) {
     console.error("[PAGES_POST]", error);
     return new NextResponse("Internal Error", { status: 500 });
@@ -72,17 +72,19 @@ export async function POST(
 
 export async function GET(
   req: Request,
-  { params }: { params: { funnelId: string } }
+  context: { params: { funnelId: string } }
 ) {
   try {
     const session = await auth();
+    const { funnelId } = await context.params;
+
     if (!session?.user) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
     const funnel = await prisma.funnel.findUnique({
       where: {
-        id: params.funnelId,
+        id: funnelId,
         userId: session.user.id,
       },
       include: {
