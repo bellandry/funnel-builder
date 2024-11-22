@@ -70,6 +70,7 @@ model Team {
 model Funnel {
   id          String       @id @default(cuid())
   name        String
+  description String
   slug        String
   published   Boolean      @default(false)
   userId      String
@@ -88,12 +89,16 @@ model Page {
   id        String     @id @default(cuid())
   name      String
   slug      String
-  content   Json
+  content   Json       @default("{\"elements\":[]}")
+  order     Int        @default(0)
   funnelId  String
   funnel    Funnel     @relation(fields: [funnelId], references: [id], onDelete: Cascade)
   analytics Analytics[]
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
+
+  @@unique([funnelId, slug])
+  @@index([funnelId, order])
 }
 
 model Template {
