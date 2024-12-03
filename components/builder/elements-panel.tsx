@@ -15,7 +15,10 @@ import {
   Layout,
   Star,
   Box,
-  Sparkles
+  Sparkles,
+  Edit2,
+  Check,
+  X
 } from "lucide-react";
 
 const ELEMENT_CATEGORIES = {
@@ -50,11 +53,14 @@ const ELEMENT_CATEGORIES = {
 interface ElementsPanelProps {
   onAddElement: (type: string) => void;
   elements: { type: string; label: string; }[];
+  onUpdateElement?: (elementId: string, updates: any) => void;
 }
 
-export function ElementsPanel({ onAddElement, elements }: ElementsPanelProps) {
+export function ElementsPanel({ onAddElement, elements, onUpdateElement }: ElementsPanelProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [draggedElement, setDraggedElement] = useState<string | null>(null);
+  const [editingElement, setEditingElement] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
 
   const handleDragStart = (type: string) => {
     setDraggedElement(type);
@@ -62,6 +68,24 @@ export function ElementsPanel({ onAddElement, elements }: ElementsPanelProps) {
 
   const handleDragEnd = () => {
     setDraggedElement(null);
+  };
+
+  const startEditing = (elementId: string, currentValue: string) => {
+    setEditingElement(elementId);
+    setEditValue(currentValue);
+  };
+
+  const saveEdit = (elementId: string) => {
+    if (onUpdateElement) {
+      onUpdateElement(elementId, { content: { text: editValue } });
+    }
+    setEditingElement(null);
+    setEditValue("");
+  };
+
+  const cancelEdit = () => {
+    setEditingElement(null);
+    setEditValue("");
   };
 
   const filterElements = (elements: any[]) => {
@@ -108,6 +132,11 @@ export function ElementsPanel({ onAddElement, elements }: ElementsPanelProps) {
                           onDragEnd={handleDragEnd}
                           onClick={() => onAddElement(element.type)}
                           isDragging={draggedElement === element.type}
+                          editingElement={editingElement}
+                          editValue={editValue}
+                          startEditing={(elementId, currentValue) => startEditing(elementId, currentValue)}
+                          saveEdit={(elementId) => saveEdit(elementId)}
+                          cancelEdit={cancelEdit}
                         />
                       ))}
                     </div>
@@ -137,6 +166,11 @@ export function ElementsPanel({ onAddElement, elements }: ElementsPanelProps) {
                         onDragEnd={handleDragEnd}
                         onClick={() => onAddElement(element.type)}
                         isDragging={draggedElement === element.type}
+                        editingElement={editingElement}
+                        editValue={editValue}
+                        startEditing={(elementId, currentValue) => startEditing(elementId, currentValue)}
+                        saveEdit={(elementId) => saveEdit(elementId)}
+                        cancelEdit={cancelEdit}
                       />
                     ))}
                   </div>
@@ -168,9 +202,25 @@ interface ElementCardProps {
   onDragEnd: () => void;
   onClick: () => void;
   isDragging: boolean;
+  editingElement: string | null;
+  editValue: string;
+  startEditing: (elementId: string, currentValue: string) => void;
+  saveEdit: (elementId: string) => void;
+  cancelEdit: () => void;
 }
 
-function ElementCard({ element, onDragStart, onDragEnd, onClick, isDragging }: ElementCardProps) {
+function ElementCard({
+  element,
+  onDragStart,
+  onDragEnd,
+  onClick,
+  isDragging,
+  editingElement,
+  editValue,
+  startEditing,
+  saveEdit,
+  cancelEdit
+}: ElementCardProps) {
   return (
     <div
       draggable
@@ -188,8 +238,30 @@ function ElementCard({ element, onDragStart, onDragEnd, onClick, isDragging }: E
           <element.icon className="h-4 w-4" />
         </div>
         <div>
-          <h4 className="text-sm font-medium leading-none mb-1">{element.label}</h4>
+          {editingElement === element.type ? (
+            <Input
+              value={editValue}
+              onChange={(e) => startEditing(element.type, e.target.value)}
+              className="w-full"
+            />
+          ) : (
+            <h4 className="text-sm font-medium leading-none mb-1">{element.label}</h4>
+          )}
           <p className="text-xs text-muted-foreground">{element.description}</p>
+          {editingElement === element.type ? (
+            <div className="flex gap-2">
+              <Button onClick={() => saveEdit(element.type)} className="text-sm">
+                <Check className="h-4 w-4" />
+              </Button>
+              <Button onClick={cancelEdit} className="text-sm">
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <Button onClick={() => startEditing(element.type, element.label)} className="text-sm">
+              <Edit2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
     </div>

@@ -36,7 +36,7 @@ A modern marketing funnel builder built with Next.js, Prisma, and TypeScript. Cr
 
 1. Clone the repository:
 \`\`\`bash
-git clone <your-repo-url>
+git clone https://github.com/bellandry/funnel-builder
 cd funnel-builder
 \`\`\`
 

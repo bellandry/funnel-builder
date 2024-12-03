@@ -240,6 +240,56 @@ export default function FunnelBuilder() {
     }
   };
 
+  const handleElementUpdate = async (elementId: string, updates: any) => {
+    if (!activePage) return;
+
+    const currentPage = funnelData.pages.find(p => p.id === activePage);
+    if (!currentPage) return;
+
+    try {
+      const updatedElements = currentPage.content.elements.map(element =>
+        element.id === elementId ? { ...element, ...updates } : element
+      );
+
+      // Update local state
+      setFunnelData(prev => ({
+        ...prev,
+        pages: prev.pages.map(p =>
+          p.id === activePage
+            ? {
+                ...p,
+                content: {
+                  ...p.content,
+                  elements: updatedElements
+                }
+              }
+            : p
+        )
+      }));
+
+      // Save to server
+      const response = await fetch(`/api/funnels/${params.funnelId}/pages/${activePage}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: { elements: updatedElements }
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to save changes");
+      }
+
+      toast.success("Element updated successfully");
+    } catch (error) {
+      console.error("Error updating element:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to update element");
+      // Rollback changes if save failed
+      loadFunnelData();
+    }
+  };
+
   if (isLoading) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>;
   }
@@ -384,6 +434,7 @@ export default function FunnelBuilder() {
                             )
                           }));
                         }} 
+                        onUpdateElement={handleElementUpdate}
                       />
                     </TabsContent>
                     <TabsContent value="styles">
@@ -483,6 +534,7 @@ export default function FunnelBuilder() {
           funnel={funnelData}
           page={currentPage}
           onClose={() => setShowPreview(false)}
+          onElementUpdate={handleElementUpdate}
         />
       )}
     </div>

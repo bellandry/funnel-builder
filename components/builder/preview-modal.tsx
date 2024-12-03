@@ -7,22 +7,12 @@ import {
 
 interface PreviewModalProps {
   funnel: any;
-  page: {
-    id: string;
-    name: string;
-    content: {
-      elements: Array<{
-        id: string;
-        type: string;
-        content: Record<string, any>;
-        styles: Record<string, any>;
-      }>;
-    };
-  };
+  page: any;
   onClose: () => void;
+  onElementUpdate?: (elementId: string, updates: any) => void;
 }
 
-export function PreviewModal({ funnel, page, onClose }: PreviewModalProps) {
+export function PreviewModal({ funnel, page, onClose, onElementUpdate }: PreviewModalProps) {
   const renderElement = (element: any) => {
     const style = {
       fontFamily: element.styles?.fontFamily,
@@ -42,18 +32,34 @@ export function PreviewModal({ funnel, page, onClose }: PreviewModalProps) {
       borderStyle: element.styles?.borderWidth ? "solid" : "none",
     };
 
+    const handleContentEdit = (key: string, value: any) => {
+      if (onElementUpdate) {
+        onElementUpdate(element.id, { content: { [key]: value } });
+      }
+    };
+
     switch (element.type) {
       case "header":
         const HeadingTag = element.content?.level || "h1";
         return (
-          <HeadingTag style={style}>
+          <HeadingTag 
+            style={style}
+            contentEditable
+            suppressContentEditableWarning
+            onBlur={(e: React.FocusEvent<HTMLDivElement>) => handleContentEdit("text", e.currentTarget.textContent)}
+          >
             {element.content?.text || "Heading"}
           </HeadingTag>
         );
 
       case "text":
         return (
-          <p style={style}>
+          <p 
+            style={style}
+            contentEditable
+            suppressContentEditableWarning
+            onBlur={(e: React.FocusEvent<HTMLParagraphElement>) => handleContentEdit("text", e.currentTarget.textContent)}
+          >
             {element.content?.text || "Text block"}
           </p>
         );
@@ -91,6 +97,9 @@ export function PreviewModal({ funnel, page, onClose }: PreviewModalProps) {
                 );
               }
             }}
+            contentEditable
+            suppressContentEditableWarning
+            onBlur={(e: React.FocusEvent<HTMLButtonElement>) => handleContentEdit("text", e.currentTarget.textContent)}
           >
             {element.content?.text || "Click me"}
           </button>
