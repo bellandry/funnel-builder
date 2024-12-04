@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Plus, Trash2, Settings, Eye, Save } from "lucide-react";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -13,6 +12,7 @@ import { ElementsPanel } from "@/components/builder/elements-panel";
 import { StylesPanel } from "@/components/builder/styles-panel";
 import { SettingsPanel } from "@/components/builder/settings-panel";
 import { PreviewModal } from "@/components/builder/preview-modal";
+import { toast } from "sonner";
 
 interface Element {
   id: string;

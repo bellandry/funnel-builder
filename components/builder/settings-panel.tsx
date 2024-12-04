@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ElementContent } from '@/types/element-content';
 
 interface SettingsPanelProps {
   element: any;
@@ -18,11 +19,12 @@ export function SettingsPanel({ element, onUpdate }: SettingsPanelProps) {
     );
   }
 
-  const updateContent = (key: string, value: any) => {
-    onUpdate({
+  const updateContent = (key: keyof ElementContent, value: ElementContent[typeof key]) => {
+    const updatedContent = {
       ...element.content,
-      [key]: value,
-    });
+      [key]: value
+    };
+    onUpdate(updatedContent);
   };
 
   const renderSettings = () => {
@@ -41,7 +43,7 @@ export function SettingsPanel({ element, onUpdate }: SettingsPanelProps) {
               <Label>Heading Level</Label>
               <Select
                 value={element.content.level || "h1"}
-                onValueChange={(value) => updateContent("level", value)}
+                onValueChange={(value: any) => updateContent("level", value)}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -212,7 +214,7 @@ export function SettingsPanel({ element, onUpdate }: SettingsPanelProps) {
               <Label>Period</Label>
               <Select
                 value={element.content.period || "month"}
-                onValueChange={(value) => updateContent("period", value)}
+                onValueChange={(value:any) => updateContent("period", value)}
               >
                 <SelectTrigger>
                   <SelectValue />
