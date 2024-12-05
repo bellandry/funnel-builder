@@ -3,11 +3,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ElementContent } from '@/types/element-content';
+import { Element, ElementContent } from '@/types/element-content';
 
 interface SettingsPanelProps {
-  element: any;
-  onUpdate: (content: any) => void;
+  element: Element | null;
+  onUpdate: (content: ElementContent) => void;
 }
 
 export function SettingsPanel({ element, onUpdate }: SettingsPanelProps) {
@@ -21,7 +21,7 @@ export function SettingsPanel({ element, onUpdate }: SettingsPanelProps) {
 
   const updateContent = (key: keyof ElementContent, value: ElementContent[typeof key]) => {
     const updatedContent = {
-      ...element.content,
+      ...(element as { content: ElementContent }).content,  // type assertion
       [key]: value
     };
     onUpdate(updatedContent);

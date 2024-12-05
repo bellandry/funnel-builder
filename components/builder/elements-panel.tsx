@@ -21,7 +21,7 @@ import {
   X
 } from "lucide-react";
 
-const ELEMENT_CATEGORIES = {
+export const ELEMENT_CATEGORIES = {
   basic: {
     label: "Basic",
     icon: Layout,

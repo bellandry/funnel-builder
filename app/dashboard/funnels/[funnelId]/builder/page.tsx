@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Plus, Trash2, Settings, Eye, Save } from "lucide-react";
+import { EditableElement } from "@/components/builder/editable-element";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -13,6 +14,8 @@ import { StylesPanel } from "@/components/builder/styles-panel";
 import { SettingsPanel } from "@/components/builder/settings-panel";
 import { PreviewModal } from "@/components/builder/preview-modal";
 import { toast } from "sonner";
+
+import { ELEMENT_CATEGORIES } from "@/components/builder/elements-panel";
 
 interface Element {
   id: string;
@@ -290,6 +293,56 @@ export default function FunnelBuilder() {
     }
   };
 
+  const handleElementDelete = async (elementId: string) => {
+    if (!activePage) return;
+
+    const currentPage = funnelData.pages.find(p => p.id === activePage);
+    if (!currentPage) return;
+
+    try {
+      const updatedElements = currentPage.content.elements.filter(element =>
+        element.id !== elementId
+      );
+
+      // Update local state
+      setFunnelData(prev => ({
+        ...prev,
+        pages: prev.pages.map(p =>
+          p.id === activePage
+            ? {
+                ...p,
+                content: {
+                  ...p.content,
+                  elements: updatedElements
+                }
+              }
+            : p
+        )
+      }));
+
+      // Save to server
+      const response = await fetch(`/api/funnels/${params.funnelId}/pages/${activePage}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: { elements: updatedElements }
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to save changes");
+      }
+
+      toast.success("Element deleted successfully");
+    } catch (error) {
+      console.error("Error deleting element:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to delete element");
+      // Rollback changes if save failed
+      loadFunnelData();
+    }
+  };
+
   if (isLoading) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>;
   }
@@ -297,239 +350,153 @@ export default function FunnelBuilder() {
   const currentPage = funnelData.pages.find(p => p.id === activePage);
 
   return (
-    <div className="h-screen flex flex-col">
-      {/* Top Bar */}
-      <div className="border-b p-4 flex items-center justify-between bg-background">
-        <h1 className="text-xl font-bold">{funnelData.name}</h1>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowPreview(true)}
-            disabled={!currentPage}
-          >
-            <Eye className="w-4 h-4 mr-2" />
-            Preview
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={isSaving || !currentPage}
-          >
-            <Save className="w-4 h-4 mr-2" />
-            {isSaving ? "Saving..." : "Save Changes"}
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex-1 flex">
-        {/* Left Sidebar - Pages */}
-        <div className="w-64 border-r p-4 bg-muted">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold">Pages</h2>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={addNewPage}
-              disabled={isLoading}
-            >
-              <Plus className="w-4 h-4" />
+    <div className="flex h-screen">
+      <div className="flex-1 flex flex-col">
+        <div className="border-b p-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Button onClick={handleSave} disabled={isSaving}>
+              <Save className="h-4 w-4 mr-2" />
+              {isSaving ? "Saving..." : "Save Changes"}
+            </Button>
+            <Button variant="outline" onClick={() => setShowPreview(true)}>
+              <Eye className="h-4 w-4 mr-2" />
+              Preview
             </Button>
           </div>
-          <div className="space-y-2">
-            {funnelData.pages.map((page) => (
-              <div key={page.id} className="flex items-center gap-2">
-                <Button
-                  variant={activePage === page.id ? "default" : "ghost"}
-                  className="flex-1 justify-start"
-                  onClick={() => setActivePage(page.id)}
-                >
-                  {page.name}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => deletePage(page.id)}
-                  disabled={funnelData.pages.length === 1}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            ))}
-          </div>
         </div>
 
-        {/* Main Content Area */}
-        {currentPage ? (
-          <div className="flex-1 flex">
-            <DragDropContext onDragEnd={handleDragEnd}>
-              {/* Canvas */}
-              <div className="flex-1 p-8 bg-slate-50 overflow-auto">
-                <Droppable droppableId="canvas">
-                  {(provided) => (
-                    <div
-                      {...provided.droppableProps}
-                      className="min-h-full"
-                      ref={provided.innerRef}
+        <div className="flex-1 overflow-auto p-4">
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <Droppable droppableId="elements">
+              {(provided) => (
+                <div
+                  {...provided.droppableProps}
+                  ref={provided.innerRef}
+                  className="space-y-4"
+                >
+                  {currentPage?.content.elements.map((element, index) => (
+                    <Draggable
+                      key={element.id}
+                      draggableId={element.id}
+                      index={index}
                     >
-                      {currentPage.content.elements?.map((element, index) => (
-                        <Draggable
-                          key={element.id}
-                          draggableId={element.id}
-                          index={index}
+                      {(provided) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          {...provided.dragHandleProps}
+                          onClick={() => setActiveElement(element)}
+                          className="relative group"
                         >
-                          {(provided) => (
-                            <div
-                              className="mb-4"
-                              onClick={() => setActiveElement(element)}
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                            >
-                              <Card className="p-4">
-                                {element.type}
-                              </Card>
-                            </div>
-                          )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
-              </div>
-
-              {/* Right Sidebar */}
-              <div className="w-80 border-l bg-muted">
-                <Tabs defaultValue="elements">
-                  <TabsList className="w-full">
-                    <TabsTrigger value="elements">Elements</TabsTrigger>
-                    <TabsTrigger value="styles">Styles</TabsTrigger>
-                    <TabsTrigger value="settings">Settings</TabsTrigger>
-                  </TabsList>
-                  <div className="p-4">
-                    <TabsContent value="elements">
-                      <ElementsPanel 
-                        elements={AVAILABLE_ELEMENTS} 
-                        onAddElement={(type) => {
-                          // Add logic to add a new element of the specified type
-                          const newElement: Element = {
-                            id: crypto.randomUUID(),
-                            type,
-                            content: {},
-                            styles: {}
-                          };
-                          const updatedElements = [...currentPage.content.elements, newElement];
-                          setFunnelData(prev => ({
-                            ...prev,
-                            pages: prev.pages.map(p => 
-                              p.id === activePage
-                                ? {
-                                    ...p,
-                                    content: {
-                                      ...p.content,
-                                      elements: updatedElements
-                                    }
-                                  }
-                                : p
-                            )
-                          }));
-                        }} 
-                        onUpdateElement={handleElementUpdate}
-                      />
-                    </TabsContent>
-                    <TabsContent value="styles">
-                      <StylesPanel
-                        element={activeElement}
-                        onUpdate={(styles) => {
-                          if (!activeElement) return;
-                          const updatedElements = currentPage.content.elements.map(e =>
-                            e.id === activeElement.id
-                              ? { ...e, styles }
-                              : e
-                          );
-                          setFunnelData(prev => ({
-                            ...prev,
-                            pages: prev.pages.map(p => 
-                              p.id === activePage
-                                ? {
-                                    ...p,
-                                    content: {
-                                      ...p.content,
-                                      elements: updatedElements
-                                    }
-                                  }
-                                : p
-                            )
-                          }));
-                        }}
-                      />
-                    </TabsContent>
-                    <TabsContent value="settings">
-                      <SettingsPanel
-                        element={activeElement}
-                        onUpdate={async (content) => {
-                          if (!activeElement || !currentPage) return;
-                          
-                          try {
-                            const updatedElements = currentPage.content.elements.map(e =>
-                              e.id === activeElement.id
-                                ? { ...e, content }
-                                : e
-                            );
-
-                            // Update local state
-                            setFunnelData(prev => ({
-                              ...prev,
-                              pages: prev.pages.map(p => 
-                                p.id === activePage
-                                  ? {
-                                      ...p,
-                                      content: {
-                                        ...p.content,
-                                        elements: updatedElements
-                                      }
-                                    }
-                                  : p
-                              )
-                            }));
-
-                            // Save to server
-                            const response = await fetch(`/api/funnels/${params.funnelId}/pages/${activePage}`, {
-                              method: "PATCH",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({
-                                content: {
-                                  elements: updatedElements
-                                }
-                              }),
-                            });
-
-                            if (!response.ok) {
-                              const error = await response.json();
-                              throw new Error(error.message || "Failed to save changes");
+                          <EditableElement
+                            element={element}
+                            onUpdate={(elementId, updates) =>
+                              handleElementUpdate(elementId, updates)
                             }
-                          } catch (error) {
-                            console.error("Error saving element settings:", error);
-                            toast.error(error instanceof Error ? error.message : "Failed to save changes");
-                            // Rollback changes if save failed
-                            loadFunnelData();
-                          }
-                        }}
-                      />
-                    </TabsContent>
-                  </div>
-                </Tabs>
-              </div>
-            </DragDropContext>
-          </div>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-muted-foreground">
-            Create a page to start building your funnel
-          </div>
-        )}
+                            isSelected={activeElement?.id === element.id}
+                          />
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleElementDelete(element.id);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
+        </div>
       </div>
 
-      {showPreview && currentPage && (
+      <div className="w-[300px] border-l flex flex-col">
+        <Tabs defaultValue="elements">
+          <TabsList className="w-full">
+            <TabsTrigger value="elements" className="flex-1">
+              Elements
+            </TabsTrigger>
+            <TabsTrigger
+              value="settings"
+              className="flex-1"
+              disabled={!activeElement}
+            >
+              Settings
+            </TabsTrigger>
+            <TabsTrigger
+              value="styles"
+              className="flex-1"
+              disabled={!activeElement}
+            >
+              Styles
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="elements" className="flex-1">
+            <ElementsPanel 
+              onAddElement={(type) => {
+                const newElement: Element = {
+                  id: crypto.randomUUID(),
+                  type,
+                  content: {},
+                  styles: {}
+                };
+                const updatedElements = [...(currentPage?.content.elements ?? []), newElement];
+                setFunnelData(prev => ({
+                  ...prev,
+                  pages: prev.pages.map(p => 
+                    p.id === activePage
+                      ? { 
+                          ...p, 
+                          content: { 
+                            ...p.content,
+                            elements: updatedElements 
+                          }
+                        }
+                      : p
+                  )
+                }));
+              }}
+              elements={Object.values(ELEMENT_CATEGORIES as Record<string, { elements: Array<{ type: string; label: string }> }>).flatMap(category => 
+                category.elements.map(element => ({ 
+                  type: element.type, 
+                  label: element.label 
+                }))
+              )}
+            />
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <SettingsPanel
+              element={activeElement}
+              onUpdate={(updates) =>
+                activeElement &&
+                handleElementUpdate(activeElement.id, { content: updates })
+              }
+            />
+          </TabsContent>
+
+          <TabsContent value="styles">
+            <StylesPanel
+              element={activeElement}
+              onUpdate={(updates) =>
+                activeElement &&
+                handleElementUpdate(activeElement.id, { styles: updates })
+              }
+            />
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      {showPreview && (
         <PreviewModal
           funnel={funnelData}
           page={currentPage}

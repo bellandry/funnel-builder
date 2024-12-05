@@ -16,3 +16,9 @@ export interface ElementContent {
   currency?: string;
   period?: 'month' | 'year' | 'one-time';
 }
+
+export interface Element {
+    type: string;  // assuming you have a type field
+    content: ElementContent;  // add this line
+    // other properties as needed
+  }
